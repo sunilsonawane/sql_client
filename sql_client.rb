@@ -13,7 +13,7 @@ require 'pg'
 
 		3. Enter following start command with all database details
 			# mysql -
-			ruby sql_client.rb -adapter postgres -host 52.7.111.111 -port 3306 -username root -password root -database mydb
+			ruby sql_client.rb -adapter mysql -host 52.7.111.111 -port 3306 -username root -password root -database mydb
 
 			# postgres
 			ruby sql_client.rb -adapter postgres -host localhost -port 5432 -username postgres -password postgres -database mydb
@@ -200,12 +200,18 @@ begin
 			exit(true)
 		end
 
-		results = client.query(query_str)
+		begin
+			results = client.query(query_str)
 
-		puts 'SQL result >>>>>>>>>> \n'
-		results.each do |row|
-		  puts row
+			puts 'SQL result >>>>>>>>>> \n'
+			results.each do |row|
+			  puts row
+			end
+		rescue Exception => e
+			puts "#{e.class}: #{e.message}"
 		end
+
+		
 	end
 
 rescue SystemExit => e
