@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 require 'mysql2'
+require 'pg'
 
 =begin
 	Use remote sql connector as follow
@@ -11,7 +12,11 @@ require 'mysql2'
 			ruby sql_client.rb
 
 		3. Enter following start command with all database details
-			ruby sql_client.rb -host 52.7.111.111 -port 3306 -username root -password root -database mydb
+			# mysql -
+			ruby sql_client.rb -adapter postgres -host 52.7.111.111 -port 3306 -username root -password root -database mydb
+
+			# postgres
+			ruby sql_client.rb -adapter postgres -host localhost -port 5432 -username postgres -password postgres -database mydb
 
 		and then enter valid sql command to get results. If any database details missing then system ask for it.
 
@@ -22,7 +27,7 @@ require 'mysql2'
 class MysqlConnector
 
 	def initialize(db_details)
-		puts "Initializing db details..."
+		puts "Initializing mysql db details..."
 		@db_details = {
 			:host 		=> db_details[:host],
 			:port 		=> db_details[:port],
@@ -56,6 +61,43 @@ class MysqlConnector
 	end
 end
 
+# PostgresConnector wrapper class to create connection using pg library
+class PostgresConnector
+
+	def initialize(db_details)
+		puts "Initializing postgres db details..."
+		@db_details = {
+			:host 		=> db_details[:host],
+			:port 		=> db_details[:port],
+			:user 		=> db_details[:username],
+			:password 	=> db_details[:password],
+			:dbname 	=> db_details[:database]
+		}
+	end
+
+	# Check all values passed are valid and not empty
+	# Connect to remote server database and return connection object
+	def connect
+		@db_details.each do |key, value|
+			if value.empty?
+				puts "Invalid value for #{key}"
+				return false
+			end
+		end
+
+		puts "Connecting to postgres server using following data..."
+		puts @db_details
+		PG.connect(@db_details)
+	end
+
+	# Close connection from remote server
+	def close(client)
+		puts "Closing postgres connection..."
+		client.close
+		puts "Closed..."
+	end
+end
+
 # Simple commend line help displayed when 'ruby sql_client.rb --help' command given
 def print_help
 	puts '################################### SQL Client ###################################
@@ -68,7 +110,11 @@ def print_help
 			ruby sql_client.rb
 
 		3. Enter following start command with all database details
-			ruby sql_client.rb -host 52.7.111.111 -port 3306 -username root -password root -database mydb
+			# mysql -
+			ruby sql_client.rb -adapter postgres -host 52.7.111.111 -port 3306 -username root -password root -database mydb
+
+			# postgres
+			ruby sql_client.rb -adapter postgres -host localhost -port 5432 -username postgres -password postgres -database mydb
 
 		and then enter valid sql command to get results. If any database details missing then system ask for it.
 
@@ -91,6 +137,8 @@ def get_db_details(argv)
 	# Get if passed as console arguments
 	argv.each_cons(2) do|arg1, arg2|
 		case arg1
+		when '-adapter'
+			db_details[:adapter] = arg2
 		when '-host'
 			db_details[:host] = arg2
 		when '-port'
@@ -123,7 +171,18 @@ begin
 	print_help if ARGV[0] == '--help'
 
 	db_details = get_db_details(ARGV)
-	@connector = MysqlConnector.new(db_details)
+
+	puts ">>>>>>>>>> Adapter : #{db_details[:adapter]}"
+	case db_details[:adapter]
+	when 'mysql'
+		@connector = MysqlConnector.new(db_details)
+	when 'postgres'
+		@connector = PostgresConnector.new(db_details)
+	else
+		puts "Invalid adapter input"
+		exit(true)
+	end
+
 	client = @connector.connect()
 
 	unless client
